@@ -5,7 +5,9 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import gradient from 'gradient-string';
 import boxen from 'boxen';
+import cliSpinners from 'cli-spinners';
 
+console.log(cliSpinners.dots);
 // Create a beautiful title
 console.log(
   gradient.pastel.multiline(
