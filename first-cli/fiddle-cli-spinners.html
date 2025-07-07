@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+    <html>
+        <head>
+            <meta charset="utf-8" />
+            <meta
+                name="viewport"
+                content="width=device-width, initial-scale=1"
+            />
+            <title>cli-spinners</title>
+
+            <style>
+                body {
+                    font-family: "Hack", monospace;
+                    background-color: #f0f0f0;
+                    color: #333;
+                    padding: 20px;
+                    font-size: 32px;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+
+                th,
+                td {
+                    padding: 10px;
+                    text-align: left;
+                    border-bottom: 1px solid #ddd;
+                    font-size: 28px;
+                }
+
+                td:first-child {
+                    text-align: right;
+                    padding-right: 10px;
+                    font-size: 28px;
+                }
+
+                th {
+                    background-color: #f2f2f2;
+                }
+
+                tr:hover {
+                    background-color: #f5f5f5;
+                }
+
+                td {
+                    font-family: "Hack", monospace;
+                    font-size: 32px;
+                }
+            </style>
+
+            <link
+                rel="stylesheet"
+                type="text/css"
+                href="https://cdn.jsdelivr.net/font-hack/2.020/css/hack-extended.min.css"
+            />
+            <link
+                rel="stylesheet"
+                type="text/css"
+                href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css"
+            />
+        </head>
+
+        <body>
+            <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+            <script>
+                $.getJSON(
+                    "https://rawgit.com/sindresorhus/cli-spinners/master/spinners.json",
+                    function (data) {
+                        var table = $("<table/>");
+                        $.each(data, function (name, spinner) {
+                            var frame = 0;
+                            var row = $("<tr/>");
+                            var spinnerCell = $("<td/>").text(
+                                spinner.frames[frame]
+                            );
+                            row.append($("<td/>").text(name));
+                            row.append(spinnerCell);
+                            table.append(row);
+
+                            setInterval(function () {
+                                frame =
+                                    frame + 1 === spinner.frames.length
+                                        ? 0
+                                        : frame + 1;
+                                spinnerCell.text(spinner.frames[frame]);
+                            }, spinner.interval);
+                        });
+                        $("body").append(table);
+                    }
+                );
+            </script>
+        </body>
+    </html>
+</html>
