@@ -147,3 +147,70 @@ GROUP BY br.STMT_RQST_SEQ_NB, br.STMT_RQST_TS, br.USR_ID
 ORDER BY br.STMT_RQST_TS DESC;
 ```
 
+
+
+***
+
+
+
+Good catch! There are several possible reasons why the counts don't match:
+
+## 1. **Orphaned Batch Requests (Most Likely)**
+Some batch requests in `STMT_BATCH_REQUEST` might not have any corresponding records in `STMT_BATCH_RQST_ACCT`:
+
+```sql
+-- Count of incomplete batch requests
+SELECT COUNT(*) as incomplete_batch_requests
+FROM STMT_BATCH_REQUEST 
+WHERE STMT_RQST_CMPL_TS IS NULL;
+
+-- Count of incomplete batch requests that actually have statement accounts
+SELECT COUNT(DISTINCT br.STMT_RQST_SEQ_NB) as incomplete_batches_with_statements
+FROM STMT_BATCH_REQUEST br
+INNER JOIN STMT_BATCH_RQST_ACCT ba ON br.STMT_RQST_SEQ_NB = ba.STMT_RQST_SEQ_NB
+WHERE br.STMT_RQST_CMPL_TS IS NULL;
+```
+
+## 2. **Check for Orphaned Batch Requests**
+```sql
+-- Find batch requests with no statement accounts
+SELECT br.STMT_RQST_SEQ_NB, br.STMT_RQST_TS, br.USR_ID
+FROM STMT_BATCH_REQUEST br
+LEFT JOIN STMT_BATCH_RQST_ACCT ba ON br.STMT_RQST_SEQ_NB = ba.STMT_RQST_SEQ_NB
+WHERE br.STMT_RQST_CMPL_TS IS NULL 
+AND ba.STMT_RQST_SEQ_NB IS NULL;
+```
+
+## 3. **Comprehensive Comparison**
+```sql
+-- All incomplete batches breakdown
+SELECT 
+    'Total Incomplete Batches' as category,
+    COUNT(*) as count
+FROM STMT_BATCH_REQUEST 
+WHERE STMT_RQST_CMPL_TS IS NULL
+
+UNION ALL
+
+SELECT 
+    'Incomplete Batches with Statements' as category,
+    COUNT(DISTINCT br.STMT_RQST_SEQ_NB) as count
+FROM STMT_BATCH_REQUEST br
+INNER JOIN STMT_BATCH_RQST_ACCT ba ON br.STMT_RQST_SEQ_NB = ba.STMT_RQST_SEQ_NB
+WHERE br.STMT_RQST_CMPL_TS IS NULL
+
+UNION ALL
+
+SELECT 
+    'Incomplete Statement Accounts' as category,
+    COUNT(ba.BAT_RQST_ACCT_SEQ_ID) as count
+FROM STMT_BATCH_REQUEST br
+INNER JOIN STMT_BATCH_RQST_ACCT ba ON br.STMT_RQST_SEQ_NB = ba.STMT_RQST_SEQ_NB
+WHERE br.STMT_RQST_CMPL_TS IS NULL;
+```
+
+**Most likely scenario**: Some batch requests were created but never had any statement accounts added to them (perhaps due to validation failures, user cancellation, or system errors during the request setup process).
+
+Run these queries to identify the exact discrepancy!
+
+
