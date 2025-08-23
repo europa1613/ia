@@ -53,3 +53,65 @@ The changes:
 - Updated the final column alias to `avg_completion_time_seconds`
 
 Now the results will show average completion times in seconds instead of minutes.
+
+***
+
+The issue is that Oracle uses different syntax for timestamp arithmetic. In Oracle, you don't need `EXTRACT(EPOCH FROM ...)` for timestamp differences. Here's the corrected query:
+
+```sql
+WITH batch_sizes AS (
+    SELECT 
+        br.STMT_RQST_SEQ_NB,
+        br.STMT_RQST_TS,
+        br.STMT_RQST_CMPL_TS,
+        COUNT(ba.ACCT_NB) as stmt_count,
+        EXTRACT(DAY FROM (br.STMT_RQST_CMPL_TS - br.STMT_RQST_TS)) * 86400 + 
+        EXTRACT(HOUR FROM (br.STMT_RQST_CMPL_TS - br.STMT_RQST_TS)) * 3600 + 
+        EXTRACT(MINUTE FROM (br.STMT_RQST_CMPL_TS - br.STMT_RQST_TS)) * 60 + 
+        EXTRACT(SECOND FROM (br.STMT_RQST_CMPL_TS - br.STMT_RQST_TS)) as completion_time_seconds
+    FROM STMT_BATCH_REQUEST br
+    LEFT JOIN STMT_BATCH_RQST_ACCT ba ON br.STMT_RQST_SEQ_NB = ba.STMT_RQST_SEQ_NB
+    WHERE br.STMT_RQST_CMPL_TS IS NOT NULL  -- Only completed requests
+    GROUP BY br.STMT_RQST_SEQ_NB, br.STMT_RQST_TS, br.STMT_RQST_CMPL_TS
+),
+categorized_batches AS (
+    SELECT 
+        CASE 
+            WHEN stmt_count < 10 THEN '< 10 statements'
+            WHEN stmt_count < 25 THEN '10-24 statements'
+            WHEN stmt_count < 50 THEN '25-49 statements'
+            WHEN stmt_count < 100 THEN '50-99 statements'
+            WHEN stmt_count < 250 THEN '100-249 statements'
+            WHEN stmt_count < 500 THEN '250-499 statements'
+            WHEN stmt_count < 1000 THEN '500-999 statements'
+            ELSE '1000+ statements'
+        END as statement_range,
+        completion_time_seconds
+    FROM batch_sizes
+)
+SELECT 
+    statement_range,
+    COUNT(*) as number_of_requests,
+    ROUND(AVG(completion_time_seconds), 2) as avg_completion_time_seconds
+FROM categorized_batches
+GROUP BY statement_range
+ORDER BY 
+    CASE statement_range
+        WHEN '< 10 statements' THEN 1
+        WHEN '10-24 statements' THEN 2
+        WHEN '25-49 statements' THEN 3
+        WHEN '50-99 statements' THEN 4
+        WHEN '100-249 statements' THEN 5
+        WHEN '250-499 statements' THEN 6
+        WHEN '500-999 statements' THEN 7
+        WHEN '1000+ statements' THEN 8
+    END;
+```
+
+In Oracle, when you subtract two timestamps, you get an INTERVAL data type. To convert this to seconds, we extract each component (days, hours, minutes, seconds) and convert them all to seconds using the appropriate multipliers:
+- Days × 86400 (seconds in a day)
+- Hours × 3600 (seconds in an hour) 
+- Minutes × 60 (seconds in a minute)
+- Plus the seconds component
+
+This should resolve the syntax error.
