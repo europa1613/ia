@@ -115,3 +115,35 @@ In Oracle, when you subtract two timestamps, you get an INTERVAL data type. To c
 - Plus the seconds component
 
 This should resolve the syntax error.
+
+***
+
+Here's the SQL query to count statement accounts where the completion timestamp is null (incomplete batch requests):
+
+```sql
+SELECT COUNT(ba.BAT_RQST_ACCT_SEQ_ID) as incomplete_statement_count
+FROM STMT_BATCH_REQUEST br
+INNER JOIN STMT_BATCH_RQST_ACCT ba ON br.STMT_RQST_SEQ_NB = ba.STMT_RQST_SEQ_NB
+WHERE br.STMT_RQST_CMPL_TS IS NULL;
+```
+
+This query:
+- Joins the parent table (STMT_BATCH_REQUEST) with the child table (STMT_BATCH_RQST_ACCT)
+- Filters for batch requests where the completion timestamp is null
+- Counts all the individual statement accounts that belong to those incomplete batch requests
+
+If you want to see additional details about these incomplete requests, you could also run:
+
+```sql
+SELECT 
+    br.STMT_RQST_SEQ_NB,
+    br.STMT_RQST_TS,
+    br.USR_ID,
+    COUNT(ba.ACCT_NB) as statement_count
+FROM STMT_BATCH_REQUEST br
+INNER JOIN STMT_BATCH_RQST_ACCT ba ON br.STMT_RQST_SEQ_NB = ba.STMT_RQST_SEQ_NB
+WHERE br.STMT_RQST_CMPL_TS IS NULL
+GROUP BY br.STMT_RQST_SEQ_NB, br.STMT_RQST_TS, br.USR_ID
+ORDER BY br.STMT_RQST_TS DESC;
+```
+
